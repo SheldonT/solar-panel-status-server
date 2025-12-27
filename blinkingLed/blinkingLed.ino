@@ -2,14 +2,20 @@
 #define DISTANCE 'D'
 #define VOLTAGE 'V'
 #define CURRENT 'C'
+#define BATTERY_VOLTAGE 'B'
+#define SHUNT_VOLTAGE 'S'
 
 const int LED = 13;
 const int MEASURE_ECHO = 12;
 const int MEASURE_TRIGGER= 11;
 const int VOLTAGE_INPUT = A0; //analog pin 0
 const int CURRENT_INPUT = A1; //analog pin 1
+const int BATTERY_VOLTAGE_INPUT = A2; //analog pin 1
+const int SHUNT_VOLTAGE_INPUT = A3;
+
 
 const char commandSeparator = ';';
+const float shuntResistance = 0.0003313333;
 
 void setup() {
   pinMode(13, OUTPUT);
@@ -66,16 +72,36 @@ void loop() {
                             float c = vDiff / mVARatio;
 
                             Serial.println(c, 2);
-                        } else if (metric == DISTANCE){
-                            digitalWrite(MEASURE_TRIGGER, LOW);
-                            delay(2);
-                            digitalWrite(MEASURE_TRIGGER, HIGH);
-                            delay(10);
-                            digitalWrite(MEASURE_TRIGGER, LOW);
+                        }
+                        else if (metric == BATTERY_VOLTAGE) {
+                            int input = analogRead(BATTERY_VOLTAGE_INPUT);
+                            float v = (input / 1024.0) * 5.0 * 5.0; // divider_ratio
+                            Serial.println(v, 2);
+                        }
+                        else if (metric == SHUNT_VOLTAGE) {
 
-                            long duration = pulseIn(MEASURE_ECHO, HIGH);
-                            float distance = duration * 0.034 / 2;
-                            Serial.println(distance, 2);
+                            //I found at 0 v, the analog output actually reads about 16.
+                            //for the shunt voltage, I'm going to take that away.
+                            
+                            float input = 0;
+
+                            for (int i = 0; i < 10; i++) {
+
+                                int analog = analogRead(SHUNT_VOLTAGE_INPUT);
+
+                                if (analog < 0) analog = 0;
+
+                                input += analog;
+
+                                delay(10);
+                            }
+                            
+                            input = input / 10;
+
+                            float v = (input / 1024.0) * 5.0 * 5.0;
+                            float shuntCurrent = v / shuntResistance;
+
+                            Serial.println(shuntCurrent ,6);
                         } else {
                             Serial.println(-2);
                         }
